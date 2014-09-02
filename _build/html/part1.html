@@ -1,0 +1,261 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Lab 1 - Custom stopping/output criteria &mdash; MESA Summer School 2014 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MESA Summer School 2014 1.0 documentation" href="index.html" />
+    <link rel="next" title="Lab 2 - Adding new variables &amp; using star_info structure" href="part2.html" />
+    <link rel="prev" title="MESA Summer School 2014 - Tutorial" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="part2.html" title="Lab 2 - Adding new variables &amp; using star_info structure"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="MESA Summer School 2014 - Tutorial"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="lab-1-custom-stopping-output-criteria">
+<h1>Lab 1 - Custom stopping/output criteria<a class="headerlink" href="#lab-1-custom-stopping-output-criteria" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="intro">
+<h2>Intro<a class="headerlink" href="#intro" title="Permalink to this headline">¶</a></h2>
+<p>In the MESA Tutorial, we learned how to add various stopping criteria to MESA. Typically these are of the form &#8220;stop when a certain varibale passes a certain threshold&#8221;. Often this is enough, but sometimes you want more complicated stopping criteria - or maybe you&#8217;ll want to save a bunch of profiles/models at 100 different times without chaining together 100 different inlists.</p>
+</div>
+<div class="section" id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h2>
+<p>Make a local copy of the work directory, you can name it whatever you want. Go to the location you want to place the copied work directory and type</p>
+<div class="highlight-bash"><div class="highlight"><pre>cp -r <span class="nv">$MESA_DIR</span>/star/work work_kevin_part1
+</pre></div>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">work_kevin_part1</span></tt> can be replaced with any name you want to use. You&#8217;ll then want to check that everything worked fine by compiling and running things with the normal commands</p>
+<div class="highlight-bash"><div class="highlight"><pre>./mk
+./rn
+</pre></div>
+</div>
+<p><em>Any time we change the code of the files in the local src directory, we must recompile the code!</em></p>
+</div>
+<div class="section" id="exercise-1-profile-output-criteria-in-inlists">
+<h2>Exercise 1 - Profile output criteria in inlists<a class="headerlink" href="#exercise-1-profile-output-criteria-in-inlists" title="Permalink to this headline">¶</a></h2>
+<p>Recall that MESA provides two output file types by default as it runs:</p>
+<ul class="simple">
+<li>History files (eg. <tt class="docutils literal"><span class="pre">work/LOGS/history.data</span></tt>) give the global properties of the star as a function of time. This is the file you&#8217;d look in if you wanted to make an HR diagram or a luminosity vs. time plot.</li>
+<li>Profiles (eg. <tt class="docutils literal"><span class="pre">work/LOGS/profile37.data</span></tt>) give a spatial slice of the star at a fixed time. This is the type of file you&#8217;d look in if you wanted to make a plot of temperature vs. pressure or abundances vs. mass coordinate.</li>
+</ul>
+<p>If you want to save a profile through inlist controls (see eg. the <tt class="docutils literal"><span class="pre">&amp;controls</span></tt> documentation in <tt class="docutils literal"><span class="pre">mesa/star/defaults/controls.defaults</span></tt>), you can save profiles at a given timestep interval, through, eg.</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">profile_interval</span> <span class="o">=</span> <span class="mi">50</span>
+</pre></div>
+</div>
+<p>and/or save one on termination with (in the <tt class="docutils literal"><span class="pre">&amp;star_job</span></tt> section)</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">write_profile_when_terminate</span> <span class="o">=</span> <span class="nb">.true.</span>
+<span class="nv">filename_for_profile_when_terminate</span> <span class="o">=</span> <span class="s1">&#39;my_profile_name.data&#39;</span>
+</pre></div>
+</div>
+<p>If you have some special criteria you want to save profiles on, then you&#8217;d need to use a separate inlist for each criterion and save a profile on termination. While this works, it&#8217;s kind of a pain if you want to run a grid of models or change some parameters of your run since you need to modify all the inlists. If you want to have these same output criteria for a grid of stars, each with slightly different input parameters, then you can put the stopping criteria in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>.</p>
+<p>MESA always reads its parameters from a file named <tt class="docutils literal"><span class="pre">inlist</span></tt>. In the default <tt class="docutils literal"><span class="pre">work</span></tt> directory we copied, this inlist file just reads from another file named <tt class="docutils literal"><span class="pre">inlist_project</span></tt>. This allows you to have several different inlists in your directory, only needing to change the file that <tt class="docutils literal"><span class="pre">inlist</span></tt> itself reads from through the lines</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">extra_star_job_inlist1_name</span> <span class="o">=</span> <span class="s1">&#39;inlist_project&#39;</span>
+<span class="nv">extra_controls_inlist1_name</span> <span class="o">=</span> <span class="s1">&#39;inlist_project&#39;</span>
+<span class="nv">extra_pgstar_inlist1_name</span> <span class="o">=</span> <span class="s1">&#39;inlist_pgstar&#39;</span>
+</pre></div>
+</div>
+<p>We&#8217;re going to run a <span class="math">\(20\ M_\odot\)</span> star through the main sequence here, and want to save profiles and models at three different abundance criteria: <span class="math">\(X_{\rm center} = 0.69\)</span>, <span class="math">\(X_{\rm center} = 0.40\)</span>, and <span class="math">\(X_{\rm center} = 0.01\)</span>. You can just take the <tt class="docutils literal"><span class="pre">inlist_project</span></tt> file and copy it into three new inlist files that we&#8217;ll slightly modify. What all needs to be changed?</p>
+<ul class="simple">
+<li>stellar mass - now <span class="math">\(20\ M_\odot\)</span></li>
+<li>profile output criteria - see above</li>
+<li>stopping criteria - see below</li>
+</ul>
+<p>The stopping criteria in the inlists go in the <tt class="docutils literal"><span class="pre">&amp;controls</span></tt> section and are as follows. You should name your inlists something descriptive to help you keep track of them - the names and stopping criteria I used are as follows:</p>
+<p>First inlist (<tt class="docutils literal"><span class="pre">inlist_to_h_ignition</span></tt>):</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">xa_central_lower_limit_species</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="s1">&#39;h1&#39;</span>
+<span class="nv">xa_central_lower_limit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.69</span>
+</pre></div>
+</div>
+<p>Second inlist (<tt class="docutils literal"><span class="pre">inlist_to_h_burn</span></tt>):</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">xa_central_lower_limit_species</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="s1">&#39;h1&#39;</span>
+<span class="nv">xa_central_lower_limit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.40</span>
+</pre></div>
+</div>
+<p>Third inlist (<tt class="docutils literal"><span class="pre">inlist_to_h_depletion</span></tt>):</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">xa_central_lower_limit_species</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="s1">&#39;h1&#39;</span>
+<span class="nv">xa_central_lower_limit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.01</span>
+</pre></div>
+</div>
+<p>To save time, you should save models at the end of the first and second inlists and load them into the sedond and third inlist, repsectively. To save a model, you can add to the <tt class="docutils literal"><span class="pre">&amp;star_job</span></tt> section of your inlist (for example)</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">save_model_when_terminate</span> <span class="o">=</span> <span class="nb">.true.</span>
+<span class="nv">save_model_filename</span> <span class="o">=</span> <span class="s1">&#39;h_ignition.model&#39;</span>
+</pre></div>
+</div>
+<p>and to load a model, you can add (also to the <tt class="docutils literal"><span class="pre">&amp;star_job</span></tt> section)</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">load_saved_model</span> <span class="o">=</span> <span class="nb">.true.</span>
+<span class="nv">saved_model_name</span> <span class="o">=</span> <span class="s1">&#39;h_ignition.model&#39;</span>
+</pre></div>
+</div>
+<p>Here, your only task is to verify that these inlists work as intended (i.e. you get three profiles out with the different names you gave them). Enjoy watching the PGSTAR plots!</p>
+<p><em>Note: There are example shell scripts on how to automate chaining multiple inlists together so that you only need to execute one command to run the whole batch. See, for example, mesa/star/test_suite/make_planets. You still have the inconvenience of having to edit multiple inlists to change parameters.</em></p>
+</div>
+<div class="section" id="exercise-2-data-output-criteria-in-run-star-extras-f">
+<h2>Exercise 2 - Data output criteria in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt><a class="headerlink" href="#exercise-2-data-output-criteria-in-run-star-extras-f" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="profiles">
+<h3>Profiles<a class="headerlink" href="#profiles" title="Permalink to this headline">¶</a></h3>
+<p>Your next task is to express the profile output criteria in the inlists from the previous section in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>. This way you only need to modify one inlist which makes things much more convenient when changing things such as resolution.</p>
+<p>Recall from the <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> tutorial (<a class="reference external" href="http://mesa.sourceforge.net/run_star_extras.html">see here</a>) that you need to replace the include statement in <tt class="docutils literal"><span class="pre">src/run_star_extras.f</span></tt></p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">include</span> <span class="s1">&#39;standard_run_star_extras.inc&#39;</span>
+</pre></div>
+</div>
+<p>with a copy/paste of the contents of that file (located in <tt class="docutils literal"><span class="pre">mesa/star/job</span></tt>). Check that this works by compiling and running again. There&#8217;s no need to run to completion - you should just verify that the code still compiles/runs before making further changes. <em>This is good advice for starting any modification of MESA. As with voting, you should recompile early and often - it will help prevent you having to look through a bunch of changes that all of a sudden aren&#8217;t compiling!</em></p>
+<p>Look through the documentation of the provided procedures you copy/pasted into <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> and find which one you should put output/stopping criteria in (when in the time step do you want to check these criteria?).</p>
+<p>The recommended option is (highlight below to reveal):</p>
+<font color="FFFFFF">extras_finish_step()</font><p>You can express your output criteria using the <tt class="docutils literal"><span class="pre">star_info</span></tt> data structure which contains all the info MESA knows about your star. Look in <tt class="docutils literal"><span class="pre">mesa/star/public/star_def.f</span></tt> for the definition of this data structure. Lots of the variables are included from other files so they&#8217;re not all listed explicitly in <tt class="docutils literal"><span class="pre">star_def.f</span></tt> (in particular, most of the variables are actually defined in <tt class="docutils literal"><span class="pre">mesa/star/public/star_data.inc</span></tt>). You need to find the names of the composition variables (there are many options that will work) in order to write output criteria. Throughout MESA&#8217;s code, you&#8217;ll see this stucture refered to as <tt class="docutils literal"><span class="pre">s</span></tt>, so if you see something like <tt class="docutils literal"><span class="pre">s%</span> <span class="pre">mass(k)</span></tt> then that just means look inside the structure <tt class="docutils literal"><span class="pre">s</span></tt> for the array <tt class="docutils literal"><span class="pre">mass</span></tt> and give me the kth entry.</p>
+<p>If you&#8217;re having trouble finding the right variable to use, try (highlight below to reveal)</p>
+<font color="FFFFFF">s% center_h1</font><p>Once you can express your criteria in if/then statements, you need the subroutines for outputting models/profiles. These are listed in <tt class="docutils literal"><span class="pre">mesa/star/public/star_lib.f</span></tt>, so search there for the right ones. You can call all of these subroutines from <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> because they are already included using the line at the top</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">use </span><span class="nv">star_lib</span>
+</pre></div>
+</div>
+<p>If you can&#8217;t find a suitable subroutine there, try looking at (highlight below to reveal)</p>
+<font color="FFFFFF">star_write_profile_info()</font> <br><p>Note that while the call signatures of these subroutines require you to pass several things to them (including other subroutines!), most of these have the same names in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> so you shouldn&#8217;t need to track down additional arguments. The main difference between using this method versus setting <tt class="docutils literal"><span class="pre">s%</span> <span class="pre">need_to_save_profiles_now</span> <span class="pre">=</span> <span class="pre">.true.</span></tt> is that calling the subroutine allows us to specify the profile&#8217;s name, while <tt class="docutils literal"><span class="pre">s%</span> <span class="pre">need_to_save_profiles_now</span> <span class="pre">=</span> <span class="pre">.true.</span></tt> just tells MESA to output a profile using its standard naming conventions (so you&#8217;ll get a profile named <tt class="docutils literal"><span class="pre">profileXX.data</span></tt> with whatever number you&#8217;re on).</p>
+<p>Finally, you need to slightly modify the inlists from before. I&#8217;d suggest making a new one (eg. <tt class="docutils literal"><span class="pre">inlist_full</span></tt>) that will run the star through the entire main sequence and output the three profiles at the right points. What&#8217;s the inlist stopping criteria now? Do you need any profile output statements?</p>
+<p>Check that you again produce the same results as you did with the multiple inlists.</p>
+</div>
+<div class="section" id="models">
+<h3>Models<a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h3>
+<p>You can also save model files from <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> for use as restart points using a similar subroutine. Take a look through <tt class="docutils literal"><span class="pre">mesa/star/public/star_lib.f</span></tt> to find it.</p>
+</div>
+<div class="section" id="stopping-criteria-in-run-star-extras-f">
+<h3>Stopping criteria in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt><a class="headerlink" href="#stopping-criteria-in-run-star-extras-f" title="Permalink to this headline">¶</a></h3>
+<p>Specifying a stopping criterion is the same as what we did in the previous part, except instead of calling subroutines to output profiles or model files, we send MESA/star a command that tells it to stop evolution. Notice at the beginning of the function <tt class="docutils literal"><span class="pre">extras_finish_step()</span></tt>, it is set to return the value</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">extras_finish_step</span> <span class="o">=</span> <span class="nv">keep_going</span>
+</pre></div>
+</div>
+<p>which tells MESA/star to keep calm and carry on evolving the star. If you want to terminate the evolution for some reason, then you can instead set the function to return the value</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">extras_finish_step</span> <span class="o">=</span> <span class="nv">terminate</span>
+</pre></div>
+</div>
+<p>among other possible integer stop codes listed in the <tt class="docutils literal"><span class="pre">extras_check_model()</span></tt> function located in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>. You can also return termination codes from that function.  Documentation is provided on how to output custom messages for different stopping criteria in that function as well.</p>
+</div>
+</div>
+<div class="section" id="brief-overview-of-pgstar">
+<h2>Brief overview of PGSTAR<a class="headerlink" href="#brief-overview-of-pgstar" title="Permalink to this headline">¶</a></h2>
+<p>Frank&#8217;s lab will cover making custom PGSTAR plots in more detail, but you&#8217;ll want some graphical output to stare at while your stars are evolving. There are two things you need to put in your inlist to make sure you have graphical output. In the <tt class="docutils literal"><span class="pre">&amp;star_job</span></tt> section, you need to enable PGSTAR with the line</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">pgstar_flag</span> <span class="o">=</span> <span class="nb">.true.</span>
+</pre></div>
+</div>
+<p>and in the <tt class="docutils literal"><span class="pre">&amp;pgstar</span></tt> section, you need to specify what plots you want to see. The grid windows (several plots at once) are the best for starting out since they give you a dense set of info. Try turning on one of these windows with</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">Grid1_win_flag</span> <span class="o">=</span> <span class="nb">.true.</span>
+</pre></div>
+</div>
+<p>You should also tell PGSTAR not to close the plots as soon as the run is over so you can still see what your star looked like at the end. You can do this with the line (also in <tt class="docutils literal"><span class="pre">&amp;pgstar</span></tt>)</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">pause</span> <span class="o">=</span> <span class="nb">.true.</span>
+</pre></div>
+</div>
+<p>MESA reads the <tt class="docutils literal"><span class="pre">&amp;pgstar</span></tt> section of the inlist at each time step, so you can add and modify plots virtually in real time. Try it!</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Lab 1 - Custom stopping/output criteria</a><ul>
+<li><a class="reference internal" href="#intro">Intro</a></li>
+<li><a class="reference internal" href="#setup">Setup</a></li>
+<li><a class="reference internal" href="#exercise-1-profile-output-criteria-in-inlists">Exercise 1 - Profile output criteria in inlists</a></li>
+<li><a class="reference internal" href="#exercise-2-data-output-criteria-in-run-star-extras-f">Exercise 2 - Data output criteria in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt></a><ul>
+<li><a class="reference internal" href="#profiles">Profiles</a></li>
+<li><a class="reference internal" href="#models">Models</a></li>
+<li><a class="reference internal" href="#stopping-criteria-in-run-star-extras-f">Stopping criteria in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#brief-overview-of-pgstar">Brief overview of PGSTAR</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">MESA Summer School 2014 - Tutorial</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="part2.html"
+                        title="next chapter">Lab 2 - Adding new variables &amp; using <tt class="docutils literal"><span class="pre">star_info</span></tt> structure</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/part1.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="part2.html" title="Lab 2 - Adding new variables &amp; using star_info structure"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="MESA Summer School 2014 - Tutorial"
+             >previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Kevin Moore.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,264 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Lab 3 - Specifying custom physics with other_* &mdash; MESA Summer School 2014 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MESA Summer School 2014 1.0 documentation" href="index.html" />
+    <link rel="next" title="Part 4 - other_* reference page" href="part4.html" />
+    <link rel="prev" title="Lab 2 - Adding new variables &amp; using star_info structure" href="part2.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="part4.html" title="Part 4 - other_* reference page"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="part2.html" title="Lab 2 - Adding new variables &amp; using star_info structure"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="lab-3-specifying-custom-physics-with-other">
+<h1>Lab 3 - Specifying custom physics with <tt class="docutils literal"><span class="pre">other_*</span></tt><a class="headerlink" href="#lab-3-specifying-custom-physics-with-other" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="intro">
+<h2>Intro<a class="headerlink" href="#intro" title="Permalink to this headline">¶</a></h2>
+<p>In this part, we&#8217;ll look at how to modify how MESA evolves stars (eg. the equations it solves, the micro/macrophysics it employs, etc.). There are many &#8216;hooks&#8217; you have access to in order to change how MESA&#8217;s internals function, and these are the <tt class="docutils literal"><span class="pre">other_*</span></tt> subroutines (see <tt class="docutils literal"><span class="pre">mesa/star/other</span></tt> for all of them). Each subroutine broadly lets you overwrite a subroutine that calculates some piece of physics for MESA/star.</p>
+<p>The hook subroutine we&#8217;ll use here is <tt class="docutils literal"><span class="pre">other_mlt()</span></tt>, which MESA uses as a helper method when solving for the structure of a star. It&#8217;s called on each cell of the star during each Newton iteration and its job is to determine the mixing type of the cell and figure out its temperature gradient, given the local conditions. Again, we&#8217;ll be starting with a fresh copy of the <tt class="docutils literal"><span class="pre">work</span></tt> directory, which you can make via</p>
+<div class="highlight-bash"><div class="highlight"><pre>cp -r <span class="nv">$MESA_DIR</span>/star/work work_kevin_part3
+</pre></div>
+</div>
+</div>
+<div class="section" id="context-for-this-code">
+<h2>Context for this code<a class="headerlink" href="#context-for-this-code" title="Permalink to this headline">¶</a></h2>
+<p><em>This section is for your own info - not strictly necessary for the activities</em></p>
+<p>Most of the code you&#8217;ll modify through these hooks is far removed from the actual evolution step, located in <tt class="docutils literal"><span class="pre">mesa/star/private/evolve.f</span></tt>. The results you calculate are often passed through several intermediate wrapper routines before they&#8217;re attached to actual variables in the <tt class="docutils literal"><span class="pre">star_info</span></tt> structure. The MLT module is no different, and we&#8217;ll briefly trace the subroutine calls in this section. <strong>Note: In your own research, you&#8217;ll want to follow similar calls to whatever hook you&#8217;re using. It&#8217;s very important to know where your code gets called in relation to the overall evolve step to ensure that your modifications work as you intend. The following is presented as an example outline of how to trace the calls in MESA/star.</strong></p>
+<p>To get some more context of what the MLT module does during evolution, look for where <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> is called in the private code. You should only see it called once - it&#8217;s immediately put inside a wrapper called <tt class="docutils literal"><span class="pre">do1_mlt_eval()</span></tt>, defined in <tt class="docutils literal"><span class="pre">mesa/star/private/mlt_info.f</span></tt>.</p>
+<p>So what does <tt class="docutils literal"><span class="pre">do1_mlt_eval()</span></tt> do? Aha! That&#8217;s the subroutine that checks for a user-defined subroutine if we set <tt class="docutils literal"><span class="pre">use_other_mlt</span> <span class="pre">=</span> <span class="pre">.true.</span></tt> in the inlist. <tt class="docutils literal"><span class="pre">do1_mlt_eval()</span></tt> is in turn called from <tt class="docutils literal"><span class="pre">do1_mlt()</span></tt>, which finally attaches the results of the MLT calculation to the corresponding stellar variables. <tt class="docutils literal"><span class="pre">do1_mlt()</span></tt> then is called from <tt class="docutils literal"><span class="pre">set_mlt_vars()</span></tt>, which loops over a range of cells of interest and sets the MLT variables for each cell. We now know where our changes will show up in <tt class="docutils literal"><span class="pre">mlt_info.f</span></tt>, and what subroutines MESA will use to interface with this.</p>
+<p>Where does <tt class="docutils literal"><span class="pre">set_mlt_vars()</span></tt> appear in the overall structure of the evolution? It is only called from the <tt class="docutils literal"><span class="pre">set_hydro_vars()</span></tt> subroutine located in <tt class="docutils literal"><span class="pre">mesa/star/private/hydro_vars.f</span></tt>. <tt class="docutils literal"><span class="pre">set_hydro_vars()</span></tt> is called in two main places:</p>
+<ol class="arabic simple">
+<li>During the Newton solve</li>
+</ol>
+<p>Here, the calls initial come from subroutines in <tt class="docutils literal"><span class="pre">mesa/star/private/hydro_mtx.f</span></tt>, which contains subroutines that provide the implementation of various subroutines that get passed to the actual Newton solver. <tt class="docutils literal"><span class="pre">set_hydro_vars()</span></tt> is called in <tt class="docutils literal"><span class="pre">set_vars_for_solver()</span></tt>, which is wrapped by <tt class="docutils literal"><span class="pre">set_newton_vars()</span></tt>. This is then called from <tt class="docutils literal"><span class="pre">eval_equations()</span></tt> in <tt class="docutils literal"><span class="pre">mesa/star/private/hydro_newton_procs.f</span></tt> which is passed to the Newton solver though the <tt class="docutils literal"><span class="pre">setequ()</span></tt> subroutine in <tt class="docutils literal"><span class="pre">mesa/star/private/star_newton.f</span></tt>. The actual Newton solve happens in the <tt class="docutils literal"><span class="pre">do_newton()</span></tt> subroutine which is wrapped by <tt class="docutils literal"><span class="pre">newton()</span></tt>. The Newton solve is called from <tt class="docutils literal"><span class="pre">hydro_newton_step()</span></tt> inside <tt class="docutils literal"><span class="pre">mesa/star/private/solve_hydro.f</span></tt> through the wrapper <tt class="docutils literal"><span class="pre">newt()</span></tt>. <tt class="docutils literal"><span class="pre">hydro_newton_step()</span></tt> is called from <tt class="docutils literal"><span class="pre">do_hydro_newton()</span></tt> which is called from the function <tt class="docutils literal"><span class="pre">do_hydro_converge()</span></tt>. <tt class="docutils literal"><span class="pre">do_hydro_converge()</span></tt> is then called from <tt class="docutils literal"><span class="pre">do_struct_burn_mix()</span></tt> in <tt class="docutils literal"><span class="pre">mesa/star/private/struct_burn_mix.f</span></tt>, which is finally called during the top-level <tt class="docutils literal"><span class="pre">do_evolve_step()</span></tt> subroutine located in <tt class="docutils literal"><span class="pre">evolve.f</span></tt>.</p>
+<ol class="arabic simple" start="2">
+<li>After the Newton solve, during the main evolve step</li>
+</ol>
+<p>In this part, <tt class="docutils literal"><span class="pre">set_hydro_vars()</span></tt> is called by the <tt class="docutils literal"><span class="pre">update_vars()</span></tt>, which is called by <tt class="docutils literal"><span class="pre">set_some_vars()</span></tt>, which is called by two top-level subroutines in <tt class="docutils literal"><span class="pre">mesa/star/private/hydro_vars.f</span></tt>, <tt class="docutils literal"><span class="pre">set_vars()</span></tt> and <tt class="docutils literal"><span class="pre">set_final_vars()</span></tt> (oh my). Finally, <tt class="docutils literal"><span class="pre">set_vars()</span></tt> and <tt class="docutils literal"><span class="pre">set_final_vars()</span></tt> are called in the top-level <tt class="docutils literal"><span class="pre">do_evolve_step()</span></tt> subroutine located in <tt class="docutils literal"><span class="pre">evolve.f</span></tt> (<tt class="docutils literal"><span class="pre">set_vars()</span></tt> is called through the wrapper <tt class="docutils literal"><span class="pre">do_set_vars()</span></tt>, since its functionality changes slightly before/after element diffusion). Specifically, <tt class="docutils literal"><span class="pre">do_set_vars()</span></tt> is called during the implicit <span class="math">\(\dot{M}\)</span> loop, and <tt class="docutils literal"><span class="pre">set_final_vars()</span></tt> is called near the end of <tt class="docutils literal"><span class="pre">do_evolve_step()</span></tt>.</p>
+<p>So in summary - after 4 levels of calls, our MLT calculations in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> bubble up to the subroutine <tt class="docutils literal"><span class="pre">set_hydro_vars()</span></tt>, which is called during every step of the Newton iteration (another 9 levels of calls below the actual Newton solve in <tt class="docutils literal"><span class="pre">do_evolve_step()</span></tt>) as well as at the end of each call of each call of <tt class="docutils literal"><span class="pre">do_evolve_step()</span></tt> (via <tt class="docutils literal"><span class="pre">set_final_vars()</span></tt>).</p>
+</div>
+<div class="section" id="exercise-1-enabling-other-mlt">
+<h2>Exercise 1 - Enabling other_mlt()<a class="headerlink" href="#exercise-1-enabling-other-mlt" title="Permalink to this headline">¶</a></h2>
+<p>Following the <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> tutorial on the MESA homepage, there are a few steps in telling MESA to use <tt class="docutils literal"><span class="pre">other_mlt()</span></tt>.</p>
+<ol class="arabic simple">
+<li>The first step is to copy/paste the contents of <tt class="docutils literal"><span class="pre">mesa/star/job/standard_run_star_extras.inc</span></tt> into your local <tt class="docutils literal"><span class="pre">work_kevin_part3/src/run_star_extras.f</span></tt> file.</li>
+</ol>
+<ol class="arabic simple">
+<li>The first step is to copy/paste the <tt class="docutils literal"><span class="pre">null_other_mlt()</span></tt> subroutine into <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>, and rename it to something like <tt class="docutils literal"><span class="pre">my_other_mlt()</span></tt>.</li>
+<li>Next, in the <tt class="docutils literal"><span class="pre">extras_controls</span></tt> subroutine of <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>, you need to say you want MLT calls to go though this new subroutine by setting</li>
+</ol>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">s</span><span class="p">%</span> <span class="nv">other_mlt</span> <span class="o">=&gt;</span> <span class="nv">my_other_mlt</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li>Finally, you also need to enable this new subroutine with the <tt class="docutils literal"><span class="pre">inlist</span></tt> command</li>
+</ol>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">use_other_mlt</span> <span class="o">=</span> <span class="nb">.true.</span>
+</pre></div>
+</div>
+<p>in the <tt class="docutils literal"><span class="pre">&amp;controls</span></tt> section. While it may seem redundant, this inlist flag is there so you can turn your custom implementation on/off easily without having to recompile things.</p>
+<p>Try everything out by compiling and running things as you normally would. Nothing should change in the output yet when you toggle the <tt class="docutils literal"><span class="pre">use_other_mlt</span></tt> flag since <tt class="docutils literal"><span class="pre">my_other_mlt()</span></tt> is still calling the normal MLT subroutine. It&#8217;s good practice to put a write statement in there to make absolutely sure it&#8217;s getting called - also so you can see how often it&#8217;s being called since we have some expectation from tracing the subroutine calls above. <em>Note: you should be able to get an idea of how MESA is splitting the MLT calls among the different OpenMP threads from this output if your environment variable ``OMP_NUM_THREADS`` is &gt; 1. Try it out if you can!</em></p>
+<p>Once you&#8217;ve verified that things are working as intended, you can comment out the output statements if you want since they really slow things down.</p>
+</div>
+<div class="section" id="exercise-2-modifying-the-standard-convection-prescription-outside-mlt-eval">
+<h2>Exercise 2 - Modifying the standard convection prescription outside mlt_eval()<a class="headerlink" href="#exercise-2-modifying-the-standard-convection-prescription-outside-mlt-eval" title="Permalink to this headline">¶</a></h2>
+<p>MESA includes a variety of MLT calculations (see eg. Cox and Giuli&#8217;s Principles of Stellar Structure for the gory details) that relate the local chemical/thermodynamic conditions to the temperature gradient and compositional mixing rate.</p>
+<p>Some aspects of this calculation are easier to change in the MESA implementation than others. We&#8217;ll go through some of simpler cases first before tackling a more involved one in the next exercise. The first thing we&#8217;ll try is to slightly increase the value for <span class="math">\(\nabla \equiv \partial \log T/\partial \log P\)</span> that <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> returns.</p>
+<p>Look at the call signature of <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> as well as its implementation in <tt class="docutils literal"><span class="pre">mesa/mlt/public/mlt_lib.f</span></tt> along with variables in <tt class="docutils literal"><span class="pre">mesa/mlt/public/mlt_def.f</span></tt>. Figure out where <span class="math">\(\nabla\)</span> gets returned and modify it after the <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> so that it gets increased/decreased by a fixed percentage. Start by making it 0.01% larger and increase from there. How much can you increase <span class="math">\(\nabla\)</span> before MESA has trouble converging. What do you think may be causing problems?</p>
+<p>You can also modify the chemical diffusion coefficent returned by <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> to adjust the speed at which convecttion smooths out chemical gradients. There is an inlist control for this in the <tt class="docutils literal"><span class="pre">&amp;controls</span></tt> section,</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="c">! mixing coefficients are multiplied by this factor</span>
+<span class="nv">mix_factor</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>which scales all of the mixing coefficients (eg. convection, thermohaline, semiconvection, rotational mixing, etc.). While the specific rotational mixing components can be multiplied by specific factors (see <tt class="docutils literal"><span class="pre">mesa/star/defaults/controls.defaults</span></tt>), you have to go into the code if you want to modify the mixing rate of, say, convection alone.</p>
+<p>Modify the variables returned by <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> so that you can scale the diffusion coefficient by a constant factor. You may want to change the stopping criterion to be somewhere past the ZAMS so you can see a difference in the evolution. <em>In practive, perhaps you&#8217;d want to make this scaling a function of position, or thermodynamic conditions - hopefully you can see how this could be done (you don&#8217;t need to actually do something like this here though).</em></p>
+</div>
+<div class="section" id="exercise-3-adding-custom-inlist-controls">
+<h2>Exercise 3 - Adding custom inlist controls<a class="headerlink" href="#exercise-3-adding-custom-inlist-controls" title="Permalink to this headline">¶</a></h2>
+<p>For the modifications we just made, it would be convenient if there was some way to toggle them or control their strength from the inlist. We can use additional controls, defined through the following variables (see <tt class="docutils literal"><span class="pre">mesa/star/defaults/controls.defaults</span></tt>)</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="c">! extra params as a convenience for developing new features</span>
+<span class="c">! note: the parameter `num_x_ctrls` is defined in `star_def.f`</span>
+
+<span class="nv">x_ctrl</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="nv">num_x_ctrls</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="nv">d0</span>
+<span class="nv">x_integer_ctrl</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="nv">num_x_ctrls</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="nv">x_logical_ctrl</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="nv">num_x_ctrls</span><span class="p">)</span> <span class="o">=</span> <span class="nb">.false.</span>
+</pre></div>
+</div>
+<p>What is <tt class="docutils literal"><span class="pre">num_x_ctrls</span></tt> set to by default? Can you change this in the inlist? How do you refer to these parameters through the <tt class="docutils literal"><span class="pre">star_info</span></tt> pointer, <tt class="docutils literal"><span class="pre">s</span></tt>?</p>
+<p>Once you&#8217;ve answered those questions, try adding some sensible inlist controls to the modifications you just made. As an example, one could be toggling the <span class="math">\(\nabla\)</span> increaese on/off, or adjusting its strength. Check that such things work before moving onto the next part.</p>
+</div>
+<div class="section" id="exercise-4-modifying-the-standard-convection-prescription-inside-mlt-eval">
+<h2>Exercise 4 - Modifying the standard convection prescription inside mlt_eval()<a class="headerlink" href="#exercise-4-modifying-the-standard-convection-prescription-inside-mlt-eval" title="Permalink to this headline">¶</a></h2>
+<p>Here, we&#8217;ll slightly modify the MLT calculation to make the mixing length scale with temperature scale height instead of pressure scale height. This part is much more involved, so take your time.</p>
+<p>From looking at the call signature of <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt>, it doesn&#8217;t get the scale height passed to it (just a logical flag <tt class="docutils literal"><span class="pre">alt_scale_height</span></tt> and the <tt class="docutils literal"><span class="pre">mixing_length_alpha</span></tt> parameter that multiplies the scale height calculated inside). That means we have to actually go into the internals to change the definition of the scale height used in the MLT calculation.</p>
+<p>A brief outline of how to go about this:</p>
+<ol class="arabic simple">
+<li>Since we want to change how <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> functions without touching the private code, we should copy the entire subroutine into our <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt> file. Search through <tt class="docutils literal"><span class="pre">mesa/mlt</span></tt> to find where it is defined, you should find it in (highlight to reveal):</li>
+</ol>
+<font color="FFFFFF">mesa/mlt/public/mlt_lib.f</font><p>Unfortunately, it looks like <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> is just a wrapper for the private function <tt class="docutils literal"><span class="pre">do_mlt_eval()</span></tt>, which we can again search for, finding it in (highlight to reveal):</p>
+<font color="FFFFFF">mesa/mlt/private/mlt.f</font><p>The actual code we want to modify is <tt class="docutils literal"><span class="pre">do_mlt_eval()</span></tt>, and the various supporting methods it calls. You should therfore copy/paste all the subroutines and functions in this file into your <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>. Once they&#8217;re in there, then they should replace the call to MESA&#8217;s public subroutine <tt class="docutils literal"><span class="pre">mlt_eval()</span></tt> with a call to your copy/pasted local implementation, <tt class="docutils literal"><span class="pre">do_mlt_eval()</span></tt>. You should comment out the</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">use </span><span class="nv">mlt_lib</span><span class="p">,</span> <span class="nv">only</span><span class="p">:</span> <span class="nv">mlt_eval</span>
+<span class="k">use </span><span class="nv">mlt_def</span>
+</pre></div>
+</div>
+<p>lines in <tt class="docutils literal"><span class="pre">my_other_mlt()</span></tt> to make sure that it looks in this file for the modified subroutines instead of using the MESA defaults.</p>
+<ol class="arabic simple" start="2">
+<li>In order to compile this new code, you&#8217;ll have include the MLT module at the top of <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>. Along with the other <tt class="docutils literal"><span class="pre">use</span></tt> statements, add the others that the copy/pasted subroutines are expecting,</li>
+</ol>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">use </span><span class="nv">mlt_def</span>
+<span class="k">use </span><span class="nv">mlt_lib</span>
+<span class="k">use </span><span class="nv">crlibm_lib</span>
+</pre></div>
+</div>
+<p>You will also need to add the module variable (can put it right between the <tt class="docutils literal"><span class="pre">implicit</span> <span class="pre">none</span></tt> and <tt class="docutils literal"><span class="pre">contains</span></tt> statements)</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="kt">integer</span><span class="p">,</span> <span class="k">parameter</span> <span class="kd">::</span> <span class="nv">nvbs</span> <span class="o">=</span> <span class="nv">num_mlt_partials</span>
+</pre></div>
+</div>
+<p>Finally, you also need to remove all the <tt class="docutils literal"><span class="pre">#ifdef</span></tt> blocks to get things to compile with the default makefile.</p>
+<ol class="arabic simple" start="3">
+<li>Once you&#8217;ve copy/pasted the private implementation and made the changes above, check that everything still works as it should by compiling and running the code.  Make sure all the functions required by <tt class="docutils literal"><span class="pre">do_mlt_eval()</span></tt> are now in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt>.</li>
+<li>Now we can finally start making modifications to the convection routine! In the interest of time, the subroutine that actually calculated the MLT results for convection is <tt class="docutils literal"><span class="pre">standard_scheme()</span></tt>, while the scale height is define in <tt class="docutils literal"><span class="pre">Get_results()</span></tt>. Search for all the places where the scale height is used and instead of using the pressure scale height, use the temperature scale height.</li>
+</ol>
+<p><em>How do you calculate the temperature scale height here? The star_info pointer doesn&#8217;t get passed here!</em> One way is to extract the <tt class="docutils literal"><span class="pre">star_info</span></tt> pointer from the <tt class="docutils literal"><span class="pre">id</span></tt> variable in <tt class="docutils literal"><span class="pre">my_other_mlt()</span></tt> with the <tt class="docutils literal"><span class="pre">star_ptr()</span></tt> subroutine (located in <tt class="docutils literal"><span class="pre">mesa/star/public/star_def.f</span></tt>) that fills in a <tt class="docutils literal"><span class="pre">star_info</span></tt> pointer that you have to declare (<tt class="docutils literal"><span class="pre">s</span></tt> here) via the <tt class="docutils literal"><span class="pre">id</span></tt> variable.</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">call </span><span class="nv">star_ptr</span><span class="p">(</span><span class="nv">id</span><span class="p">,</span> <span class="nv">s</span><span class="p">,</span> <span class="nv">ierr</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can then extract the data necessary to calculate the temperature scale height and pass it down to <tt class="docutils literal"><span class="pre">Get_results()</span></tt>. You have to be careful here and pass it as an argument rather than making it a module variable since there is a different value for every cell and the <tt class="docutils literal"><span class="pre">my_other_mlt()</span></tt> subroutine will be called in parallel (as you saw in Exercise 1). You may be able to get away with making it a module variable using the OpenMP directive,</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="c">!$OMP THREADPRIVATE(temperature_scale_height)</span>
+</pre></div>
+</div>
+<p>but I&#8217;m not sure if that would prevent all the possible problems, and that&#8217;s way beyond the scope of this exercise (did anyone actually get this far anyway??).</p>
+<p>One last important tip is when you calculate things from <tt class="docutils literal"><span class="pre">star_info</span></tt> in these subroutines, you can&#8217;t always count on the arrays being allocated and filled with data (especially while the star is evolving on the pre-MS). If you want to do a calculation in <tt class="docutils literal"><span class="pre">my_other_mlt()</span></tt> using the <tt class="docutils literal"><span class="pre">star_info</span></tt> pointer <tt class="docutils literal"><span class="pre">s</span></tt> you extracted, then you need to check that the arrays are actually populated. One way to do this (not sure if it&#8217;s the best, but it has worked for me) is to wrap all your calculations in an if-statement such as</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">if</span><span class="p">(</span><span class="nv">k</span><span class="ow">.gt.</span><span class="mi">0</span><span class="p">)</span> <span class="k">then</span>
+   <span class="c">!Calculate things using arrays like s% P(k) without running into segfaults</span>
+<span class="k">endif</span>
+</pre></div>
+</div>
+<p>After all that effort, can you think of some stellar evolution contexts where this change would make a significant difference?</p>
+</div>
+<div class="section" id="defining-your-own-mixing-prescription">
+<h2>Defining your own mixing prescription<a class="headerlink" href="#defining-your-own-mixing-prescription" title="Permalink to this headline">¶</a></h2>
+<p>You can also write your own mixing routine, based on what you see calculated in other subroutines such as <tt class="docutils literal"><span class="pre">standard_scheme()</span></tt>, <tt class="docutils literal"><span class="pre">set_thermo_haline()</span></tt>, or <tt class="docutils literal"><span class="pre">semiconvection()</span></tt>. Notice how all of these are called in similar ways from <tt class="docutils literal"><span class="pre">Get_results()</span></tt>. They all set a few variables:</p>
+<ol class="arabic simple">
+<li><tt class="docutils literal"><span class="pre">mixing_type</span></tt> - an integer specifying what kind of mixing is occuring in this cell. See <tt class="docutils literal"><span class="pre">mesa/mlt/public/mlt.def</span></tt> for their definition.</li>
+<li><tt class="docutils literal"><span class="pre">gradT</span></tt> - the actual temperature gradient determined for this cell, <span class="math">\(\nabla\)</span>.</li>
+<li><tt class="docutils literal"><span class="pre">D</span></tt> - the compositional diffusion coefficient which controls the speed of chemical mixing.</li>
+<li><tt class="docutils literal"><span class="pre">conv_vel</span></tt> - a characteristic velocity of this type of mixing, usually set to 3D/(mixing length) in an isotropic process (cf. Fick&#8217;s Law).</li>
+<li><tt class="docutils literal"><span class="pre">d_gradT_dvb</span></tt> - partial derivatives of <tt class="docutils literal"><span class="pre">gradT</span></tt> with respect to all the other MLT variables (see the call structure of <tt class="docutils literal"><span class="pre">Get_results()</span></tt> and compare to what&#8217;s passed to it in <tt class="docutils literal"><span class="pre">do_mlt_eval()</span></tt>) .</li>
+</ol>
+<p>According to Bill (see <a class="reference external" href="http://sourceforge.net/p/mesa/mailman/message/32175061/">this thread</a>), the only partial derivative you explicitly need to calculate is that of <tt class="docutils literal"><span class="pre">gradT</span></tt> - the others are already done for you in <tt class="docutils literal"><span class="pre">Get_results()</span></tt>.</p>
+<p>We won&#8217;t have time to implement a new mixing prescription here, but you will in Pascale&#8217;s lab - have fun!</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Lab 3 - Specifying custom physics with <tt class="docutils literal"><span class="pre">other_*</span></tt></a><ul>
+<li><a class="reference internal" href="#intro">Intro</a></li>
+<li><a class="reference internal" href="#context-for-this-code">Context for this code</a></li>
+<li><a class="reference internal" href="#exercise-1-enabling-other-mlt">Exercise 1 - Enabling other_mlt()</a></li>
+<li><a class="reference internal" href="#exercise-2-modifying-the-standard-convection-prescription-outside-mlt-eval">Exercise 2 - Modifying the standard convection prescription outside mlt_eval()</a></li>
+<li><a class="reference internal" href="#exercise-3-adding-custom-inlist-controls">Exercise 3 - Adding custom inlist controls</a></li>
+<li><a class="reference internal" href="#exercise-4-modifying-the-standard-convection-prescription-inside-mlt-eval">Exercise 4 - Modifying the standard convection prescription inside mlt_eval()</a></li>
+<li><a class="reference internal" href="#defining-your-own-mixing-prescription">Defining your own mixing prescription</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="part2.html"
+                        title="previous chapter">Lab 2 - Adding new variables &amp; using <tt class="docutils literal"><span class="pre">star_info</span></tt> structure</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="part4.html"
+                        title="next chapter">Part 4 - <tt class="docutils literal"><span class="pre">other_*</span></tt> reference page</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/part3.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="part4.html" title="Part 4 - other_* reference page"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="part2.html" title="Lab 2 - Adding new variables &amp; using star_info structure"
+             >previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Kevin Moore.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,132 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Part 4 - other_* reference page &mdash; MESA Summer School 2014 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MESA Summer School 2014 1.0 documentation" href="index.html" />
+    <link rel="prev" title="Part 3 - Specifying custom physics with other_*" href="part3.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="part3.html" title="Part 3 - Specifying custom physics with other_*"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="part-4-other-reference-page">
+<h1>Part 4 - <tt class="docutils literal"><span class="pre">other_*</span></tt> reference page<a class="headerlink" href="#part-4-other-reference-page" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="intro">
+<h2>Intro<a class="headerlink" href="#intro" title="Permalink to this headline">¶</a></h2>
+<p>There are quite a few <tt class="docutils literal"><span class="pre">other_*</span></tt> routines (also referred to as hooks) that MESA provides. Rather than modifying the private code, these are the way to access and modify MESA&#8217;s internal functions. If you&#8217;d like to modify something that you don&#8217;t see an obvious subroutine for, then Bill will be happy to add a new one for you. Here&#8217;s a list of some of the more commonly used hooks:</p>
+<p><strong>Please let us know (eg. by email to the list) if something becomes out of date, if you find an error, or if there&#8217;s another use case you think we should explicitly mention for one of the hooks.</strong></p>
+</div>
+<div class="section" id="hooks">
+<h2>Hooks<a class="headerlink" href="#hooks" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">other_mlt()</span></tt> - Allows you to change the implementation of mixing length theory (MLT) that MESA uses to determine what type of mixing occurs in a cell. The actual temperature gradient is also calculated here, along with the diffusion coeffienct for mixing, among other related quantities. For details on the expected return variables, see <tt class="docutils literal"><span class="pre">mesa/mlt/public/mlt_def.f</span></tt> and <tt class="docutils literal"><span class="pre">mesa/mlt/public/mlt_lib.f</span></tt>. Example uses for this hook include defining your own local mixing prescription, modifying the thermal and compositional transport rates for standard convection (or any other mixing type), etc. <em>Note: Mixing is not actually performed in this subroutine. If you want to modify how MESA mixes things, you need to look at other hooks such as ``other_split_mix()`` or ``other_diffusion()``</em></li>
+<li><tt class="docutils literal"><span class="pre">other_energy()</span></tt> - Allows you to specify an anomalous heating/cooling rate in the star. This is pretty simple, since it&#8217;s not replacing a call to another MESA routine like some of the other hooks.</li>
+<li><tt class="docutils literal"><span class="pre">other_wind()</span></tt> - Allows you to specify a mass-loss prescription (eg. a formula for <span class="math">\(\dot{M}\)</span> as a function of other stellar variables). Can also be used for more general mass-loss scenarios like Roche-lobe overflow.</li>
+<li><tt class="docutils literal"><span class="pre">other_eos()</span></tt> - Allows you to use your own implementation of an equation of state. An example would be using <a class="reference external" href="http://freeeos.sourceforge.net">FreeEOS</a> within MESA.</li>
+<li><tt class="docutils literal"><span class="pre">other_kap()</span></tt> - Allows you to implement your own routine for calculating opacities. Examples include trying to calculate them on the fly instead of looking them up from tables (still too slow according to those who have tried), as well as forcing things like pure electron conduction or electron scattering in certain regions of a star/planet.</li>
+<li><tt class="docutils literal"><span class="pre">other_torque()</span></tt> - Allows you to implement other sources of torque in rotating stars. This could be used, for example, to implement a magnetic breaking prescription.</li>
+<li><tt class="docutils literal"><span class="pre">other_mesh_functions()</span></tt> - Allows you to define other functions that MESA will examine when determining when to increase/decrease resolution.</li>
+<li><tt class="docutils literal"><span class="pre">other_diffusion()</span></tt> - Allows you to implement your own diffusion routine in between stellar time steps. This bypasses the entire default diffusion solver, so you either need to copy/paste and make appropriate changes or write your own from scratch.</li>
+<li><tt class="docutils literal"><span class="pre">other_atm()</span></tt> - Allows you to specify a custom atmosphere boundary condition. Could be useful in trying to contstruct models to match known planets.</li>
+<li><tt class="docutils literal"><span class="pre">other_split_mix()</span></tt> - Allows you to modify the composition profiles after the mixing step.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Part 4 - <tt class="docutils literal"><span class="pre">other_*</span></tt> reference page</a><ul>
+<li><a class="reference internal" href="#intro">Intro</a></li>
+<li><a class="reference internal" href="#hooks">Hooks</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="part3.html"
+                        title="previous chapter">Part 3 - Specifying custom physics with <tt class="docutils literal"><span class="pre">other_*</span></tt></a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/part4.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="part3.html" title="Part 3 - Specifying custom physics with other_*"
+             >previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Kevin Moore.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

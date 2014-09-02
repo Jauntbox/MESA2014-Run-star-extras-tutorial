@@ -1,0 +1,153 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MESA Summer School 2014 - Tutorial &mdash; MESA Summer School 2014 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MESA Summer School 2014 1.0 documentation" href="#" />
+    <link rel="next" title="Lab 1 - Custom stopping/output criteria" href="part1.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="part1.html" title="Lab 1 - Custom stopping/output criteria"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="mesa-summer-school-2014-tutorial">
+<h1>MESA Summer School 2014 - Tutorial<a class="headerlink" href="#mesa-summer-school-2014-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="part1.html">Lab 1 - Custom stopping/output criteria</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="part1.html#intro">Intro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part1.html#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part1.html#exercise-1-profile-output-criteria-in-inlists">Exercise 1 - Profile output criteria in inlists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part1.html#exercise-2-data-output-criteria-in-run-star-extras-f">Exercise 2 - Data output criteria in <tt class="docutils literal"><span class="pre">run_star_extras.f</span></tt></a></li>
+<li class="toctree-l2"><a class="reference internal" href="part1.html#brief-overview-of-pgstar">Brief overview of PGSTAR</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="part2.html">Lab 2 - Adding new variables &amp; using <tt class="docutils literal"><span class="pre">star_info</span></tt> structure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="part2.html#intro">Intro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part2.html#exercise-1-finding-what-mesa-calculates">Exercise 1 - Finding what MESA calculates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part2.html#exercise-2-calculating-the-dynamical-time-scale-s">Exercise 2 - Calculating the dynamical time scale(s)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="part3.html">Lab 3 - Specifying custom physics with <tt class="docutils literal"><span class="pre">other_*</span></tt></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#intro">Intro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#context-for-this-code">Context for this code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#exercise-1-enabling-other-mlt">Exercise 1 - Enabling other_mlt()</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#exercise-2-modifying-the-standard-convection-prescription-outside-mlt-eval">Exercise 2 - Modifying the standard convection prescription outside mlt_eval()</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#exercise-3-adding-custom-inlist-controls">Exercise 3 - Adding custom inlist controls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#exercise-4-modifying-the-standard-convection-prescription-inside-mlt-eval">Exercise 4 - Modifying the standard convection prescription inside mlt_eval()</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part3.html#defining-your-own-mixing-prescription">Defining your own mixing prescription</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="part4.html">Part 4 - <tt class="docutils literal"><span class="pre">other_*</span></tt> reference page</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="part4.html#intro">Intro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="part4.html#hooks">Hooks</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">MESA Summer School 2014 - Tutorial</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="part1.html"
+                        title="next chapter">Lab 1 - Custom stopping/output criteria</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="part1.html" title="Lab 1 - Custom stopping/output criteria"
+             >next</a> |</li>
+        <li><a href="#">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Kevin Moore.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

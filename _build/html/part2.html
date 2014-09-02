@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Lab 2 - Adding new variables &amp; using star_info structure &mdash; MESA Summer School 2014 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MESA Summer School 2014 1.0 documentation" href="index.html" />
+    <link rel="next" title="Lab 3 - Specifying custom physics with other_*" href="part3.html" />
+    <link rel="prev" title="Lab 1 - Custom stopping/output criteria" href="part1.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="part3.html" title="Lab 3 - Specifying custom physics with other_*"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="part1.html" title="Lab 1 - Custom stopping/output criteria"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="lab-2-adding-new-variables-using-star-info-structure">
+<h1>Lab 2 - Adding new variables &amp; using <tt class="docutils literal"><span class="pre">star_info</span></tt> structure<a class="headerlink" href="#lab-2-adding-new-variables-using-star-info-structure" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="intro">
+<h2>Intro<a class="headerlink" href="#intro" title="Permalink to this headline">¶</a></h2>
+<p>In this section, we&#8217;ll practice extracting data from the <tt class="docutils literal"><span class="pre">star_info</span></tt> structure and use it to calculate some auxillary variables. In this activity, you should start by making a fresh copy of the <tt class="docutils literal"><span class="pre">mesa/star/work</span></tt> directory in your local work space. Name it whatever you want, for example</p>
+<div class="highlight-bash"><div class="highlight"><pre>cp -r <span class="nv">$MESA_DIR</span>/star/work work_kevin_part2
+</pre></div>
+</div>
+</div>
+<div class="section" id="exercise-1-finding-what-mesa-calculates">
+<h2>Exercise 1 - Finding what MESA calculates<a class="headerlink" href="#exercise-1-finding-what-mesa-calculates" title="Permalink to this headline">¶</a></h2>
+<p>The global dynamical time scale of a star is given by</p>
+<p><span class="math">\(t_{\rm dyn} \sim (G\left&lt;\rho\right&gt;)^{-1/2}\)</span></p>
+<p>where <span class="math">\(\left&lt;\rho\right&gt;\)</span> is some measure of the mean stellar density. Within prefactors, this is the free-fall time at the stellar surface as well as the Keplerian orbital frequency there. MESA already calculates a dynamical timescale at every cell in the star. How is it defined?</p>
+<p><em>Search through MESA/star and find where this is calculated. What is the exact formula?</em></p>
+<p>But what&#8217;s the name of the variable to search for? That&#8217;s part of what you&#8217;re looking for. This may seem like a silly activity, but when you&#8217;re writing your own code for MESA this type of question comes up over and over so it&#8217;s good to get some practice hunting things down.</p>
+<p>If you&#8217;re having trouble, try narrowing your search to (highlight to reveal):</p>
+<font color="FFFFFF">mesa/star/private</font><p>The definition you should find is (highlight to reveal):</p>
+<font color="FFFFFF">s% dynamic_timescale = 2*pi*sqrt(radius*radius*radius/(s% cgrav(1)*mstar))</font><p>which definition of the dynamical time does this prefactor correspond to?</p>
+</div>
+<div class="section" id="exercise-2-calculating-the-dynamical-time-scale-s">
+<h2>Exercise 2 - Calculating the dynamical time scale(s)<a class="headerlink" href="#exercise-2-calculating-the-dynamical-time-scale-s" title="Permalink to this headline">¶</a></h2>
+<p>Now that we know what MESA is calculating, what if we want a slightly different calculation? Perhaps we have a planet with a massive core and just want to use the central density for <span class="math">\(\left&lt;\rho\right&gt;\)</span>, or instead take a mass-weighted average of the densities of interior cells.</p>
+<p>The first step is to tell MESA that you&#8217;re going to be adding some extra user-defined columns to the profiles. This is done through the function <tt class="docutils literal"><span class="pre">how_many_extra_profile_columns()</span></tt> simply by making the return value equal to the number of extra columns you&#8217;re adding. We&#8217;ll start with just one,</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">how_many_extra_profile_columns</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>The next step will be to fill in a placeholder for our dynamical timescale calculation, just to check that the code is set up correctly before we start trying to do calculations with the <tt class="docutils literal"><span class="pre">star_info</span></tt> data. This will go in the subroutine right below, <tt class="docutils literal"><span class="pre">data_for_extra_profile_columns()</span></tt>.</p>
+<p>We can modify the <tt class="docutils literal"><span class="pre">inlist_project</span></tt> file if we want, but the default one will still spit out profiles every 50 steps, so we can leave it as it is. You should get 90 columns by default, so any you add will go at the end.</p>
+<div class="section" id="center-density-approach">
+<h3>Center density approach<a class="headerlink" href="#center-density-approach" title="Permalink to this headline">¶</a></h3>
+<p>Let&#8217;s start out really simple and make a new dynamical timescale based on just the central density of the star. This is a pretty useless value to put in a profile since it&#8217;s not even spatially-dependent, but we&#8217;ll start with the easiet thing to code up. Inside <tt class="docutils literal"><span class="pre">data_for_extra_profile_columns()</span></tt>, there&#8217;s an example calculation in the documentation, we&#8217;ll start out with a similar scaffold and just set everything equal to zero to check if things still compile.</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="c">!We&#39;re going to try and calculate some dynamical time scales:</span>
+<span class="nv">names</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="s1">&#39;t_dyn (central)&#39;</span>
+<span class="k">do </span><span class="nv">k</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">nz</span>
+   <span class="nv">vals</span><span class="p">(</span><span class="nv">k</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="nv">d0</span>
+<span class="k">end do</span>
+</pre></div>
+</div>
+<p>Check that this works (you should get a 91st column in your profiles that&#8217;s filled with all zeroes), and then figure out how to to the calculation with central density, <span class="math">\(t_{\rm dyn} = (G\left&lt;\rho_c\right&gt;)^{-1/2}\)</span>. One possible solution is (highlight to reveal):</p>
+<font color="FFFFFF">vals(k,1) = sqrt(1d0/(s% cgrav(1)*s% rho(nz)))</font><p>Running this should make all the cells in your new profile column have the same value. For <tt class="docutils literal"><span class="pre">profile10.data</span></tt>, I got <span class="math">\(t_{\rm dyn} \approx 6.3\times 10^4\)</span> s.</p>
+</div>
+<div class="section" id="mass-weighted-average-density-approach">
+<h3>Mass-weighted average density approach<a class="headerlink" href="#mass-weighted-average-density-approach" title="Permalink to this headline">¶</a></h3>
+<p>Another, more realistic, way to estimate the dynamical time would be to use a mass-weighted mean density of the interior cells. This requires for each cell k, looping over the cells interior to k (what indicies are those?) and finding the mass-weighted mean density.</p>
+<p>If you get stuck, my code looked like this (highlight):</p>
+<font color="FFFFFF">names(2) = 't_dyn (mass-weighted)'</font><br>
+<font color="FFFFFF">do k = 1, nz</font><br>
+   &nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">mean_density = 0d0</font><br>
+   &nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">do j = k, nz</font><br>
+      &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">mean_density = mean_density + s% dm(j)*s% rho(j)</font><br>
+   &nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">end do</font><br>
+   &nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">mean_density = mean_density/s% m(k)</font><br>
+   &nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">vals(k,2) = sqrt(1d0/(s% cgrav(1)*mean_density))</font><br>
+<font color="FFFFFF">end do</font><p>Remember to declare any new variables you need and to set</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="nv">how_many_extra_profile_columns</span> <span class="o">=</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>You should now have two extra columns, the mass-weighted calculation should be linearly increasing from the core outward and equal to the value of the central density method at the central point since our formulae should be the same there.</p>
+</div>
+<div class="section" id="comparison-to-sound-crossing-time">
+<h3>Comparison to sound crossing time<a class="headerlink" href="#comparison-to-sound-crossing-time" title="Permalink to this headline">¶</a></h3>
+<p>Our last goal is to compare these calculations with the sound-crossing time through the interior of the star, another measure of how fast parts of the star can respond to perturbations. This calculation should be similar to the previous section, except you&#8217;ll want to approximate the integral</p>
+<p><span class="math">\(t_{\rm sound}(r) = 2\int_0^r \frac{dr}{c_s}\)</span></p>
+<p>in MESA. There are several ways to calculate this given the variables in the <tt class="docutils literal"><span class="pre">star_info</span></tt> pointer, give one a try. Again, my solution is below (highlight):</p>
+<font color="FFFFFF">names(3) = 't_dyn (sound)'</font><br>
+<font color="FFFFFF">vals(nz,3) = 2*s% r(nz)/s% csound(nz)</font><br>
+<font color="FFFFFF">do k = nz-1, 1, -1</font><br>
+   &nbsp&nbsp&nbsp&nbsp&nbsp<font color="FFFFFF">vals(k,3) = vals(k+1,3) + 2*(s% r(k) - s% r(k+1))/s% csound(k)</font><br>
+<font color="FFFFFF">end do</font><p>How is this different from the other values we calculated? Why do you think this is?</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Lab 2 - Adding new variables &amp; using <tt class="docutils literal"><span class="pre">star_info</span></tt> structure</a><ul>
+<li><a class="reference internal" href="#intro">Intro</a></li>
+<li><a class="reference internal" href="#exercise-1-finding-what-mesa-calculates">Exercise 1 - Finding what MESA calculates</a></li>
+<li><a class="reference internal" href="#exercise-2-calculating-the-dynamical-time-scale-s">Exercise 2 - Calculating the dynamical time scale(s)</a><ul>
+<li><a class="reference internal" href="#center-density-approach">Center density approach</a></li>
+<li><a class="reference internal" href="#mass-weighted-average-density-approach">Mass-weighted average density approach</a></li>
+<li><a class="reference internal" href="#comparison-to-sound-crossing-time">Comparison to sound crossing time</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="part1.html"
+                        title="previous chapter">Lab 1 - Custom stopping/output criteria</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="part3.html"
+                        title="next chapter">Lab 3 - Specifying custom physics with <tt class="docutils literal"><span class="pre">other_*</span></tt></a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/part2.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="part3.html" title="Lab 3 - Specifying custom physics with other_*"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="part1.html" title="Lab 1 - Custom stopping/output criteria"
+             >previous</a> |</li>
+        <li><a href="index.html">MESA Summer School 2014 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Kevin Moore.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
